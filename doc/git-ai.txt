@@ -1,0 +1,265 @@
+*git-ai.txt*  Neovim plugin for Git AI attribution
+
+Author:   Gabriel Driggs
+Homepage: https://github.com/gabed457/git-ai.nvim
+License:  MIT
+
+==============================================================================
+CONTENTS                                                    *git-ai-contents*
+
+  1. Introduction ............................ |git-ai-introduction|
+  2. Requirements ............................ |git-ai-requirements|
+  3. Setup ................................... |git-ai-setup|
+  4. Configuration ........................... |git-ai-configuration|
+  5. Commands ................................ |git-ai-commands|
+  6. Keymaps ................................. |git-ai-keymaps|
+  7. Statusline .............................. |git-ai-statusline|
+  8. Telescope ............................... |git-ai-telescope|
+  9. Highlights .............................. |git-ai-highlights|
+  10. Health Check ........................... |git-ai-health|
+
+==============================================================================
+1. INTRODUCTION                                         *git-ai-introduction*
+
+git-ai.nvim integrates with Git AI (https://usegitai.com) to show which
+lines of code were AI-generated, by which tool, model, and prompt.
+
+Git AI stores attribution data in Git Notes and provides a CLI (`git-ai`)
+for querying it. This plugin brings that data into the Neovim editing
+experience with inline virtual text, floating windows, sign column
+indicators, and telescope integration.
+
+Think of it as "gitsigns.nvim but for AI authorship."
+
+==============================================================================
+2. REQUIREMENTS                                         *git-ai-requirements*
+
+Required:
+- Neovim >= 0.9.0
+- git-ai CLI (https://usegitai.com/install.sh)
+- git
+
+Optional:
+- telescope.nvim (for picker features)
+- nvim-web-devicons (for icons in telescope results)
+
+==============================================================================
+3. SETUP                                                     *git-ai-setup*
+
+Using lazy.nvim: >lua
+  {
+    "gabed457/git-ai.nvim",
+    event = "BufReadPre",
+    opts = {},
+  }
+<
+
+Using packer.nvim: >lua
+  use {
+    "gabed457/git-ai.nvim",
+    config = function()
+      require("git-ai").setup()
+    end,
+  }
+<
+
+Manual setup: >lua
+  require("git-ai").setup({
+    -- your options here
+  })
+<
+
+==============================================================================
+4. CONFIGURATION                                     *git-ai-configuration*
+
+Default configuration:                              *git-ai-default-config*
+>lua
+  require("git-ai").setup({
+    enabled = true,
+
+    virtual_text = {
+      enabled = true,
+      format = "🤖 {tool}:{model}",
+      hl_group = "GitAiVirtualText",
+      current_line_only = false,
+    },
+
+    signs = {
+      enabled = true,
+      char = "▍",
+      priority = 5,
+      colors = {
+        "#7aa2f7", "#9ece6a", "#e0af68",
+        "#f7768e", "#bb9af7", "#7dcfff",
+      },
+    },
+
+    float = {
+      border = "rounded",
+      max_width = 80,
+      max_height = 20,
+    },
+
+    blame = {
+      debounce = 300,
+      auto_refresh_events = { "BufWritePost", "BufEnter" },
+    },
+
+    keymaps = {
+      hover = "<leader>ai",
+      toggle = "<leader>at",
+      blame = "<leader>ab",
+      stats = "<leader>as",
+      prompts = "<leader>ap",
+      search = "<leader>aS",
+    },
+
+    telescope = {
+      preview = true,
+    },
+  })
+<
+
+                                                    *git-ai-virtual-text*
+virtual_text.enabled      Boolean. Enable inline virtual text. Default: true.
+virtual_text.format       String. Format template for virtual text.
+                          Available tokens: {tool}, {model}, {author}, {date}.
+                          Default: "🤖 {tool}:{model}"
+virtual_text.hl_group     String. Highlight group name. Default: "GitAiVirtualText"
+virtual_text.current_line_only
+                          Boolean. Only show on the current line.
+                          Default: false.
+
+                                                    *git-ai-signs*
+signs.enabled             Boolean. Enable sign column indicators. Default: true.
+signs.char                String. Character for AI-generated lines. Default: "▍"
+signs.priority            Number. Sign priority. Default: 5.
+signs.colors              Table. Color palette for prompt grouping.
+
+                                                    *git-ai-float-config*
+float.border              String. Border style for floating windows.
+                          Default: "rounded"
+float.max_width           Number. Max floating window width. Default: 80.
+float.max_height          Number. Max floating window height. Default: 20.
+
+                                                    *git-ai-blame-config*
+blame.debounce            Number. Debounce delay in ms. Default: 300.
+blame.auto_refresh_events Table. Events that trigger a blame refresh.
+
+==============================================================================
+5. COMMANDS                                               *git-ai-commands*
+
+                                                          *:GitAiToggle*
+:GitAiToggle              Toggle inline virtual text on/off.
+
+                                                          *:GitAiBlame*
+:GitAiBlame               Show full AI blame side panel with attribution
+                          for every line, scroll-synced with the source.
+
+                                                          *:GitAiHover*
+:GitAiHover               Show a floating window with full attribution
+                          details for the current line.
+
+                                                          *:GitAiStats*
+:GitAiStats               Show a floating window with file-level stats:
+                          % AI-generated, breakdown by tool/model.
+
+                                                          *:GitAiLog*
+:GitAiLog                 Show the AI attribution log for the current file
+                          (list of all prompts, chronological).
+
+                                                          *:GitAiPrompts*
+:GitAiPrompts             Open telescope picker for prompts in current file.
+                          Requires telescope.nvim.
+
+                                                          *:GitAiSearch*
+:GitAiSearch              Open telescope picker for project-wide AI code
+                          search. Requires telescope.nvim.
+
+                                                          *:GitAiRefresh*
+:GitAiRefresh             Force refresh the blame cache for the current
+                          buffer.
+
+==============================================================================
+6. KEYMAPS                                                 *git-ai-keymaps*
+
+Default keymaps (configurable, set to false to disable):
+
+  <leader>ai    Show AI attribution for current line (hover)
+  <leader>at    Toggle virtual text on/off
+  <leader>ab    Full AI blame side panel
+  <leader>as    File stats
+  <leader>ap    Telescope prompts picker
+  <leader>aS    Telescope project search
+
+==============================================================================
+7. STATUSLINE                                           *git-ai-statusline*
+
+git-ai.nvim exports functions for statusline integration.
+
+                                              *git-ai.statusline()*
+require("git-ai").statusline()
+  Returns a string for the current line attribution.
+  Example: "🤖 copilot:gpt-4o" or "" if not AI-generated.
+
+                                              *git-ai.statusline_project()*
+require("git-ai").statusline_project()
+  Returns project-level stats for the current file.
+  Example: "AI: 34%" or "" if no AI code.
+
+Lualine example: >lua
+  require("lualine").setup({
+    sections = {
+      lualine_x = {
+        { function() return require("git-ai").statusline() end },
+      },
+    },
+  })
+<
+
+==============================================================================
+8. TELESCOPE                                             *git-ai-telescope*
+
+The plugin registers a telescope extension with two pickers:
+
+                                              *telescope-git-ai-prompts*
+:Telescope git_ai prompts
+  List all AI prompts that contributed to the current file. Each entry
+  shows tool, model, line range, and prompt summary. Preview shows the
+  full prompt text.
+
+                                              *telescope-git-ai-search*
+:Telescope git_ai search
+  Search across all AI-attributed code in the project. Filter by tool,
+  model, or prompt text.
+
+==============================================================================
+9. HIGHLIGHTS                                           *git-ai-highlights*
+
+Default highlight groups (override with vim.api.nvim_set_hl):
+
+  GitAiVirtualText      Virtual text at end of AI-generated lines
+  GitAiSign             Default sign column color
+  GitAiSign1-6          Rotating sign colors for prompt grouping
+  GitAiFloatBorder      Floating window border
+  GitAiFloatTitle       Floating window title
+  GitAiFloatTool        Tool name in floating window
+  GitAiFloatModel       Model name in floating window
+  GitAiFloatPrompt      Prompt text in floating window
+  GitAiFloatLabel       Field labels in floating window
+  GitAiFloatSeparator   Separator line in floating window
+  GitAiStatsPct         Statistics percentage text
+
+==============================================================================
+10. HEALTH CHECK                                          *git-ai-health*
+
+Run `:checkhealth git-ai` to verify:
+- git-ai CLI is installed and on PATH
+- git-ai version
+- Current directory is a git repository
+- Git AI notes exist in the repository
+- Neovim version is compatible
+- telescope.nvim availability (optional)
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
