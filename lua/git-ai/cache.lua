@@ -1,4 +1,6 @@
 --- Blame result caching and invalidation for git-ai.nvim
+local uv = vim.uv or vim.loop
+
 local M = {}
 
 ---@class GitAiAttribution
@@ -33,7 +35,7 @@ function M.set(bufnr, filepath, head, data)
   cache[bufnr] = {
     data = data,
     head = head,
-    timestamp = vim.uv.now(),
+    timestamp = uv.now(),
     filepath = filepath,
   }
 end

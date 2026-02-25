@@ -194,20 +194,8 @@ local function search_picker(opts)
           for line_nr, attr in pairs(data) do
             if attr.is_ai then
               table.insert(all_entries, {
-                display = string.format(
-                  "%s:%d  %s:%s",
-                  file,
-                  line_nr,
-                  attr.tool or "ai",
-                  attr.model or "unknown"
-                ),
-                ordinal = file
-                  .. " "
-                  .. (attr.tool or "")
-                  .. " "
-                  .. (attr.model or "")
-                  .. " "
-                  .. (attr.prompt or ""),
+                display = string.format("%s:%d  %s:%s", file, line_nr, attr.tool or "ai", attr.model or "unknown"),
+                ordinal = file .. " " .. (attr.tool or "") .. " " .. (attr.model or "") .. " " .. (attr.prompt or ""),
                 filename = file,
                 filepath = filepath,
                 lnum = line_nr,
