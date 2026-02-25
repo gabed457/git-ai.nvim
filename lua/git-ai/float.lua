@@ -434,11 +434,7 @@ function M.show_blame_panel(bufnr, config)
   for i = 1, line_count do
     local attr = data[i]
     if attr and attr.is_ai then
-      local text = string.format(
-        "%s:%s",
-        attr.tool or "ai",
-        attr.model or "unknown"
-      )
+      local text = string.format("%s:%s", attr.tool or "ai", attr.model or "unknown")
       table.insert(blame_lines, text)
     else
       table.insert(blame_lines, "")

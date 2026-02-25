@@ -1,140 +1,43 @@
 --- Tests for the git-ai blame parser and cache logic
 --- Run with: nvim -l tests/blame_parser_spec.lua
---- Or with busted: busted tests/blame_parser_spec.lua
 
--- Minimal test runner if busted is not available
-local describe, it, assert_eq
+-- Setup package path from project root
+local root = vim.fn.getcwd()
+package.path = root .. "/lua/?.lua;" .. root .. "/lua/?/init.lua;" .. package.path
+
+-- Minimal test runner
 local test_results = { passed = 0, failed = 0, errors = {} }
 
-if pcall(require, "busted") then
-  -- busted is available, use its globals
-  describe = _G.describe
-  it = _G.it
-  assert_eq = function(expected, actual, msg)
-    assert.are.equal(expected, actual, msg)
-  end
-else
-  -- Simple standalone test runner
-  describe = function(name, fn)
-    print("\n" .. name)
-    fn()
-  end
+local function describe(name, fn)
+  print("\n" .. name)
+  fn()
+end
 
-  it = function(name, fn)
-    local ok, err = pcall(fn)
-    if ok then
-      test_results.passed = test_results.passed + 1
-      print("  ✓ " .. name)
-    else
-      test_results.failed = test_results.failed + 1
-      table.insert(test_results.errors, { name = name, err = err })
-      print("  ✗ " .. name)
-      print("    " .. tostring(err))
-    end
-  end
-
-  assert_eq = function(expected, actual, msg)
-    if expected ~= actual then
-      error(
-        string.format(
-          "%sexpected %s, got %s",
-          msg and (msg .. ": ") or "",
-          vim.inspect(expected),
-          vim.inspect(actual)
-        )
-      )
-    end
+local function it(name, fn)
+  local ok, err = pcall(fn)
+  if ok then
+    test_results.passed = test_results.passed + 1
+    print("  ✓ " .. name)
+  else
+    test_results.failed = test_results.failed + 1
+    table.insert(test_results.errors, { name = name, err = err })
+    print("  ✗ " .. name)
+    print("    " .. tostring(err))
   end
 end
 
--- Add project root to package path
-local script_dir = debug.getinfo(1, "S").source:sub(2):match("(.*/)") or "./"
-package.path = script_dir .. "../lua/?.lua;" .. script_dir .. "../lua/?/init.lua;" .. package.path
-
--- Mock vim globals if not running inside Neovim
-if not vim then
-  _G.vim = {
-    islist = function(t)
-      if type(t) ~= "table" then
-        return false
-      end
-      local count = 0
-      for _ in pairs(t) do
-        count = count + 1
-      end
-      for i = 1, count do
-        if t[i] == nil then
-          return false
-        end
-      end
-      return true
-    end,
-    json = {
-      decode = function(str)
-        -- Minimal JSON decode for tests
-        -- In real usage, vim.json.decode is available
-        local ok, result = pcall(function()
-          -- Use Lua pattern matching for simple JSON arrays/objects
-          return loadstring("return " .. str:gsub("%[", "{"):gsub("%]", "}"):gsub('"(%w+)"%s*:', "[%q]="))()
-        end)
-        if ok then
-          return result
-        end
-        return nil
-      end,
-      encode = function(val)
-        return vim.inspect(val)
-      end,
-    },
-    inspect = function(val)
-      return tostring(val)
-    end,
-    deepcopy = function(t)
-      if type(t) ~= "table" then
-        return t
-      end
-      local copy = {}
-      for k, v in pairs(t) do
-        copy[k] = vim.deepcopy(v)
-      end
-      return copy
-    end,
-    split = function(str, sep)
-      local parts = {}
-      for part in str:gmatch("[^" .. sep .. "]+") do
-        table.insert(parts, part)
-      end
-      return parts
-    end,
-    uv = {
-      now = function()
-        return os.clock() * 1000
-      end,
-    },
-    api = {
-      nvim_buf_is_valid = function()
-        return true
-      end,
-      nvim_buf_line_count = function()
-        return 100
-      end,
-    },
-    bo = setmetatable({}, {
-      __index = function()
-        return {}
-      end,
-    }),
-    fn = {
-      fnamemodify = function(path, mod)
-        if mod == ":h" then
-          return path:match("(.+)/") or "."
-        end
-        return path
-      end,
-    },
-  }
+local function assert_eq(expected, actual, msg)
+  if expected ~= actual then
+    error(string.format(
+      "%sexpected %s, got %s",
+      msg and (msg .. ": ") or "",
+      vim.inspect(expected),
+      vim.inspect(actual)
+    ))
+  end
 end
 
+-- Load modules under test
 local blame = require("git-ai.blame")
 local cache = require("git-ai.cache")
 
@@ -369,18 +272,14 @@ describe("cache", function()
   end)
 end)
 
--- Print summary if running standalone
-if not pcall(require, "busted") then
-  print(string.format(
-    "\n%d passed, %d failed",
-    test_results.passed,
-    test_results.failed
-  ))
-  if #test_results.errors > 0 then
-    print("\nFailed tests:")
-    for _, err in ipairs(test_results.errors) do
-      print("  " .. err.name .. ": " .. tostring(err.err))
-    end
-    os.exit(1)
+-- Print summary and exit
+print(string.format("\n%d passed, %d failed", test_results.passed, test_results.failed))
+if #test_results.errors > 0 then
+  print("\nFailed tests:")
+  for _, err in ipairs(test_results.errors) do
+    print("  " .. err.name .. ": " .. tostring(err.err))
   end
+  os.exit(1)
+else
+  os.exit(0)
 end

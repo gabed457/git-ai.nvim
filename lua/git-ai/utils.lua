@@ -1,5 +1,7 @@
 --- Utility functions for git-ai.nvim
 --- CLI detection, async job helpers, path utilities
+local uv = vim.uv or vim.loop
+
 local M = {}
 
 --- Check if git-ai CLI is installed
@@ -168,7 +170,7 @@ end
 ---@param ms number debounce delay in milliseconds
 ---@return function debounced function
 function M.debounce(fn, ms)
-  local timer = vim.uv.new_timer()
+  local timer = uv.new_timer()
   return function(...)
     local args = { ... }
     timer:stop()
